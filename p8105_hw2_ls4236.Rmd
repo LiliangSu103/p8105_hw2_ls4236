@@ -8,6 +8,7 @@ output: github_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
+library(readxl)
 ```
 
 ## Problem 1 
@@ -48,6 +49,7 @@ pol_df =
     ),
     month = str_to_lower(month)
   ) |> 
+# create column president to represent presidential party
   mutate(
     president = case_when(
       prez_gop == 1 ~ "gop",
@@ -73,6 +75,7 @@ snp_df =
   ) |> 
   mutate(
     year = as.integer(year),
+# here we convert year into 4 digit value
     year = ifelse(year < 16, 2000 + year, 1900 + year),
     month = as.integer(month),
     day = as.integer(day)
@@ -113,7 +116,7 @@ une_df =
   pivot_longer(
     cols = jan:dec,
     names_to = "month",
-    values_to = "une_rate"
+    values_to = "unemp_rate"
   )
 
 
@@ -128,18 +131,249 @@ merge_df =
   pol_df |> 
   left_join(snp_df, by = c("year", "month")) |> 
   left_join(une_df, by = c("year", "month"))
-
-head(merge_df,10)
 ```
 
 ### Summary
 
 Overall, the three datasets together cover a series of political and economic indicators.
 
-The `pols-month` dataset includes 822 observations of 9 dimentions(variables) tracking the number of national politicians monthly by party affiliation, spanning from 1947 to 2015. The key variables include presidential party, number of governors, senators, and representatives of both parties.
-
-The `snp` dataset provide 787 observations of monthly S&P 500 closing values from 1950 to 2015, which can be seen as an indicator of stock market performance.
-
-The `unemployment` dataset contains 68 observations with monthly unemployment rate spanning from 1948 to 2015.
+The `pols-month` dataset includes 822 observations of 9 dimentions(variables) tracking the number of national politicians monthly by party affiliation, spanning from 1947 to 2015. The key variables include presidential party, number of governors, senators, and representatives of both parties. The `snp` dataset provide 787 observations of monthly S&P 500 closing values from 1950 to 2015, which can be seen as an indicator of stock market performance. The `unemployment` dataset contains 68 observations with monthly unemployment rate spanning from 1948 to 2015.
 
 After cleaning and merging, the resulting dataset combines these data into a comprehensive dataset with 822 rows and 11 variables, from 1947 to 2015. Key integrated variables include presidential party affiliation (converted to a single president variable), S&P 500 closing values (close), unemployment rates (une_rate), and detailed counts of politicians by party.
+
+
+## Problem 2
+
+### `Mr. Trash Wheel`
+
+Firstly, tidy up `Mr. Trash Wheel` dataset, and add `group = Mr` column for combining
+
+```{r}
+mr_wheel = read_excel(
+  "./data/MTL.xlsx", 
+  sheet = "Mr. Trash Wheel", 
+  range = "A2:N653"
+  ) |> 
+  janitor::clean_names() |> 
+  filter(!is.na(dumpster)) |> 
+  mutate(
+    sports_balls = as.integer(round(sports_balls)),
+    year = as.integer(year),
+    group = "Mr"
+  ) |> 
+  relocate(group)
+  
+```
+
+### `Professor Trash Wheel`
+
+Tidy up `Professor Trash Wheel` dataset, and add `group = Prof` column for combining.
+
+```{r}
+prof_wheel = read_excel(
+  "./data/MTL.xlsx",
+  sheet = "Professor Trash Wheel",
+  range = "A2:M120"
+) |> 
+  janitor::clean_names() |> 
+  filter(!is.na(dumpster)) |> 
+  mutate(
+    group = "Prof"
+  ) |> 
+  relocate(group)
+```
+
+### `Gwynnda Trash Wheel`
+
+Tidy up `Gwynnda Trash Wheel` dataset, and add `group = Gwyn` column for combining.
+
+```{r}
+gwyn_wheel = read_excel(
+  "./data/MTL.xlsx",
+  sheet = "Gwynnda Trash Wheel",
+  range = "A2:L265"
+) |> 
+  janitor::clean_names() |> 
+  filter(!is.na(dumpster)) |> 
+  mutate(
+    group = "Gwyn"
+  ) |> 
+  relocate(group)
+
+```
+
+### Merge
+
+Then combine these datasets using `bind_rows` function, as they are basically the same variables measured across different groups.
+
+```{r}
+combined_wheel = bind_rows(mr_wheel, prof_wheel, gwyn_wheel)
+```
+
+### Summary
+
+Overall, the combined Trash Wheel dataset contains `r nrow(combined_wheel)` observations of trash collection events from Baltimore's three water-wheels, with Mr. Trash Wheel contributing the majority of records (`r nrow(mr_wheel)`) since 2014, followed by Gwynnda (`r nrow(gwyn_wheel)`) since 2021 and Professor Trash Wheel (`r nrow(prof_wheel)`) since 2017. 
+
+Key variables include:
+
+- trash weight, with mean `r combined_wheel |> pull(weight_tons) |> mean(na.rm = TRUE)` tons, ranges from `r combined_wheel |> pull(weight_tons) |> min(na.rm = TRUE)` to `r combined_wheel |> pull(weight_tons) |> max(na.rm = TRUE)`tons per dumpster
+- trash volume, with mean `r combined_wheel |> pull(volume_cubic_yards) |> mean(na.rm = TRUE)` cubic yards and statistical mode 15, ranges from `r combined_wheel |>  pull(volume_cubic_yards) |> min(na.rm = TRUE)` to `r combined_wheel |> pull(volume_cubic_yards) |> max(na.rm = TRUE)` cubic yards
+- specific trash items like cigarette butts with an average of `r combined_wheel |> pull(cigarette_butts) |> mean(na.rm = TRUE)` per observation, and plastic bottles, which is up to `r combined_wheel |> pull(plastic_bottles) |> max(na.rm = TRUE)` items
+
+In addition, Professor Trash Wheel records a total of `r prof_wheel |> pull(weight_tons) |> sum(na.rm = TRUE)` tons of trash during its operational period. 
+
+In June 2022, Gwynnda Trash Wheel records a total number of `r gwyn_wheel |> filter(year == 2022, month == "June") |> pull(cigarette_butts) |> sum(na.rm = TRUE)` cigarette butts.
+
+
+## Problem 3
+
+### `zip`
+
+Firstly, import and clean the `Zip Codes` dataset.
+
+```{r}
+zip = 
+  read_csv(file = "./data/Zip Codes.csv", na = c("NA",".","")) |> 
+  janitor::clean_names() |> 
+# file_date is the same for every observations, so it is redundant
+  select(-file_date) |> 
+  mutate(
+    county_code = as.integer(county_code),
+    state_fips = as.integer(state_fips),
+    county_fips = as.integer(county_fips),
+    zip_code = as.integer(zip_code)
+  ) |> 
+  rename(county_zip = county) # rename to differentiate bewteen both datasets
+
+  
+```
+
+### `zillow`
+
+Secondly, import and clean the `Zillow Rental Price` dataset.
+
+```{r}
+zillow = 
+  read_csv(file = "./data/Zillow Rental Price.csv", na = c("NA",".","")) |> 
+  janitor::clean_names() |> 
+  select(-region_type, -state, -state_name, -city, -metro) |> # state, state_name, region_type, metro, and city are redundant as they have the same value for every observations
+  rename(zip_code = region_name, county_zillow = county_name, region_id_zillow = region_id) |> # rename to differentiate bewteen both datasets
+  pivot_longer(
+    cols = x2015_01_31:x2024_08_31,
+    names_prefix = "x",
+    names_to = "date",
+    values_to = "zori"
+  ) |> # tidy up the date and zori variables
+  separate(
+    date,
+    into = c("year", "month", "day"),
+    sep = "_"
+  ) |> 
+  relocate(year, month, day) |> 
+  mutate(
+    region_id_zillow = as.integer(region_id_zillow),
+    size_rank = as.integer(size_rank),
+    zip_code = as.integer(zip_code),
+    year = as.integer(year),
+    month = as.integer(month),
+    day = as.integer(day),
+    county_zillow = str_remove_all(county_zillow, " County") # remove the character "county" for all observations in the column "county"
+  ) |> 
+  filter(!is.na(zori))  # zori is the main variable of interest, hence any row without a value can’t contribute to the analysis
+```
+
+### Merge
+
+Then merge two datasets using `left_join` function by `zip_code`, and I will relocate and arrange it later.
+
+```{r}
+combined_zillow = left_join(zillow, zip, by = "zip_code")
+```
+
+**Note**: The warning results from the fact that certain ZIP codes appear more than once, which lead to the warning where some `x` (Row 2759) matches multiple rows in `y`. Let's check it. 
+
+```{r}
+
+zip |> count(zip_code) |> filter(n>1) |> pull(zip_code)
+zip |> filter(zip_code == "10463")
+zip |> filter( zip_code == "11201")
+
+```
+
+This is probably due to the fact that 11201 is mostly in Kings County (Brooklyn), but part of it overlaps into New York County (Manhattan). So after double checking, I decide to remove the rows where 11201 corresponds to Manhattan and 10463 corresponds to Manhattan.
+
+```{r}
+zip = zip |> 
+  filter(!(zip_code %in% c("10463", "11201") & county_zip == "New York"))
+```
+
+In addition, there is also some mismatches between `county_zillow` and `county_zip`. After double checking, I decide to change the corresponding `county_zip` into same values as `county_zillow`.
+
+```{r}
+which(pull(combined_zillow, county_zillow) != pull(combined_zillow, county_zip))
+```
+
+
+Merge again, relocate, and arrange to get new `combined_zillow` whose number of rows (`r nrow(combined_zillow)`) equals to that of `zillow` datasets (`r nrow(zillow)`).
+
+```{r}
+combined_zillow = left_join(zillow, zip, by = "zip_code") |> 
+  mutate(county_zip = ifelse(county_zip != county_zillow, county_zillow, county_zip)) |> 
+  relocate(
+    zip_code, county_zillow, neighborhood, # identification variables first
+    year, month, day, # temporal variables
+    zori, # measurement variables
+    region_id_zillow, size_rank, county_zip, state_fips, county_code, county_fips # Others
+  ) |> 
+  arrange(zip_code, year, month, day)
+```
+
+### Dataset Description
+
+The resulting tidy dataset contains `r nrow(combined_zillow)` observations and `r ncol(combined_zillow)` variables. Specifically,
+
+- Total observations: `r nrow(combined_zillow)`
+- Unique ZIP codes: `r combined_zillow |> pull(zip_code) |> unique() |> length()`
+- Unique neighborhoods: `r combined_zillow |> pull(neighborhood) |> unique() |> length()`
+
+The dataset combines rental price data from Zillow with geographic information, tracking monthly ZORI (Zillow Observed Rent Index) values from January 2015 to August 2024 across NYC ZIP codes.
+
+### Missing Zip codes
+
+```{r}
+missing_zips = anti_join(zip, zillow, by = "zip_code")
+```
+
+Here are the those ZIP codes only appear in `zip` dataset but not in `zillow` dataset: `r missing_zips |> pull(zip_code)`.
+
+Here are some possible reasons why these ZIP codes are missing these areas:
+
+- 10499, 10550 (Bronx): These are likely non-residential ZIP codes (PO boxes, business-only areas) with insufficient rental data
+- 10008, 10041, 10043 (Manhattan): Typically government buildings, offices, or specialized areas with limited residential housing
+- Various ZIP codes marked "NA" for neighborhood: May represent newly created ZIP codes or areas with minimal residential population
+
+### COVID-19 analysis
+
+```{r}
+# Compare January 2020 vs January 2021 prices
+covid_zillow = combined_zillow |>
+  filter(month == 1 & year %in% c(2020, 2021)) |>
+  select(zip_code, county_zillow, neighborhood, year, zori) |>
+  pivot_wider(
+    names_from = year,
+    values_from = zori,
+    names_prefix = "zori_"
+  ) |>
+  filter(!is.na(zori_2020) & !is.na(zori_2021)) |>
+  mutate(
+    price_change = zori_2021 - zori_2020,
+    percent_change = (price_change / zori_2020) * 100
+  ) |>
+  arrange(price_change)
+
+# Top 10 largest drops
+top_drops <- head(covid_zillow, 10)
+top_drops
+```
+
+The data shows significant rental price declines during the first year of the COVID-19 pandemic. The top 10 ZIP codes with the largest drops experienced decreases ranging from approximately `r top_drops |> pull(percent_change) |> min() |> round(1)`% to `r top_drops |> pull(percent_change) |> max() |> round(1)`%.
