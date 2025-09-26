@@ -305,6 +305,7 @@ This is probably due to the fact that 11201 is mostly in Kings County (Brooklyn)
 ```{r}
 zip = zip |> 
   filter(!(zip_code %in% c("10463", "11201") & county_zip == "New York"))
+combined_zillow = left_join(zillow, zip, by = "zip_code")
 ```
 
 In addition, there is also some mismatches between `county_zillow` and `county_zip`. After double checking, I decide to change the corresponding `county_zip` into same values as `county_zillow`.
