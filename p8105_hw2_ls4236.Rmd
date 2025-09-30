@@ -15,7 +15,7 @@ library(readxl)
 
 ### `pols-month`
 
-First of all, load the required dataset `pols-month` and clean it, and tidy the data according to the first step.
+First of all, load the dataset `pols-month` and clean it, and tidy the data according to the first step.
 
 ```{r}
 pol_df =
@@ -62,7 +62,7 @@ pol_df =
 
 ### `snp`
 
-Second of all, load the required dataset `snp` and clean it, and tidy the data according to the second step.
+Second of all, load the dataset `snp` and clean it, and tidy the data according to the second step.
 
 ```{r}
 snp_df =
@@ -75,8 +75,8 @@ snp_df =
   ) |> 
   mutate(
     year = as.integer(year),
-# here we convert year into 4 digit value
-    year = ifelse(year < 16, 2000 + year, 1900 + year),
+    year = ifelse(year < 16, 2000 + year, 1900 + year), # here convert year into 4 digit value
+    year = as.integer(year),
     month = as.integer(month),
     day = as.integer(day)
   ) |> 
@@ -107,7 +107,7 @@ snp_df =
 
 ### `unemployment`
 
-Third of all, load the required dataset `unemployment` and clean it, and tidy the data according to the third step.
+Third of all, load the dataset `unemployment` and clean it, and tidy the data according to the third step.
 
 ```{r}
 une_df =
@@ -117,8 +117,10 @@ une_df =
     cols = jan:dec,
     names_to = "month",
     values_to = "unemp_rate"
+  ) |> 
+  mutate(
+    year = as.integer(year)
   )
-
 
 ```
 
@@ -137,9 +139,9 @@ merge_df =
 
 Overall, the three datasets together cover a series of political and economic indicators.
 
-The `pols-month` dataset includes 822 observations of 9 dimentions(variables) tracking the number of national politicians monthly by party affiliation, spanning from 1947 to 2015. The key variables include presidential party, number of governors, senators, and representatives of both parties. The `snp` dataset provide 787 observations of monthly S&P 500 closing values from 1950 to 2015, which can be seen as an indicator of stock market performance. The `unemployment` dataset contains 68 observations with monthly unemployment rate spanning from 1948 to 2015.
+The `pols-month` dataset includes `r nrow(pol_df)` observations of `r ncol(pol_df)` dimentions(variables) tracking the number of national politicians monthly by party affiliation, spanning from 1947 to 2015. The key variables include presidential party, number of governors, senators, and representatives of both parties. The `snp` dataset provide `r nrow(snp_df)` observations of monthly S&P 500 closing values from 1950 to 2015, which can be seen as an indicator of stock market performance. The `unemployment` dataset contains `r nrow(une_df)` observations with monthly unemployment rate spanning from 1948 to 2015.
 
-After cleaning and merging, the resulting dataset combines these data into a comprehensive dataset with 822 rows and 11 variables, from 1947 to 2015. Key integrated variables include presidential party affiliation (converted to a single president variable), S&P 500 closing values (close), unemployment rates (une_rate), and detailed counts of politicians by party.
+After cleaning and merging, the resulting dataset combines these data into a comprehensive dataset with `r nrow(merge_df)` rows and `r ncol(merge_df)` variables, from 1947 to 2015. Key integrated variables include presidential party affiliation (converted to a single president variable), S&P 500 closing values (close), unemployment rates (une_rate), and detailed counts of politicians by party.
 
 
 ## Problem 2
@@ -150,9 +152,9 @@ Firstly, tidy up `Mr. Trash Wheel` dataset, and add `group = Mr` column for comb
 
 ```{r}
 mr_wheel = read_excel(
-  "./data/MTL.xlsx", 
+  "./data/202509_Trash_Wheel_Collection_Data.xlsx", 
   sheet = "Mr. Trash Wheel", 
-  range = "A2:N653"
+  range = "A2:N709"
   ) |> 
   janitor::clean_names() |> 
   filter(!is.na(dumpster)) |> 
@@ -171,9 +173,9 @@ Tidy up `Professor Trash Wheel` dataset, and add `group = Prof` column for combi
 
 ```{r}
 prof_wheel = read_excel(
-  "./data/MTL.xlsx",
+  "./data/202509_Trash_Wheel_Collection_Data.xlsx",
   sheet = "Professor Trash Wheel",
-  range = "A2:M120"
+  range = "A2:M134"
 ) |> 
   janitor::clean_names() |> 
   filter(!is.na(dumpster)) |> 
@@ -189,9 +191,9 @@ Tidy up `Gwynnda Trash Wheel` dataset, and add `group = Gwyn` column for combini
 
 ```{r}
 gwyn_wheel = read_excel(
-  "./data/MTL.xlsx",
-  sheet = "Gwynnda Trash Wheel",
-  range = "A2:L265"
+  "./data/202509_Trash_Wheel_Collection_Data.xlsx",
+  sheet = "Gwynns Falls Trash Wheel",
+  range = "A2:L351"
 ) |> 
   janitor::clean_names() |> 
   filter(!is.na(dumpster)) |> 
@@ -216,9 +218,10 @@ Overall, the combined Trash Wheel dataset contains `r nrow(combined_wheel)` obse
 
 Key variables include:
 
-- trash weight, with mean `r combined_wheel |> pull(weight_tons) |> mean(na.rm = TRUE)` tons, ranges from `r combined_wheel |> pull(weight_tons) |> min(na.rm = TRUE)` to `r combined_wheel |> pull(weight_tons) |> max(na.rm = TRUE)`tons per dumpster
-- trash volume, with mean `r combined_wheel |> pull(volume_cubic_yards) |> mean(na.rm = TRUE)` cubic yards and statistical mode 15, ranges from `r combined_wheel |>  pull(volume_cubic_yards) |> min(na.rm = TRUE)` to `r combined_wheel |> pull(volume_cubic_yards) |> max(na.rm = TRUE)` cubic yards
-- specific trash items like cigarette butts with an average of `r combined_wheel |> pull(cigarette_butts) |> mean(na.rm = TRUE)` per observation, and plastic bottles, which is up to `r combined_wheel |> pull(plastic_bottles) |> max(na.rm = TRUE)` items
+- Trash weight, with a mean of `r combined_wheel |> pull(weight_tons) |> mean(na.rm = TRUE)` tons per dumpster, ranges from `r combined_wheel |> pull(weight_tons) |> min(na.rm = TRUE)` to `r combined_wheel |> pull(weight_tons) |> max(na.rm = TRUE)`tons per dumpster
+- Trash volume, with a mean of `r combined_wheel |> pull(volume_cubic_yards) |> mean(na.rm = TRUE)` cubic yards per dumpster and statistical mode 15, ranges from `r combined_wheel |>  pull(volume_cubic_yards) |> min(na.rm = TRUE)` to `r combined_wheel |> pull(volume_cubic_yards) |> max(na.rm = TRUE)` cubic yards per dumpster
+- Specific trash items like cigarette butts with an average of `r combined_wheel |> pull(cigarette_butts) |> mean(na.rm = TRUE)` per month, and plastic bottles, which is up to `r combined_wheel |> pull(plastic_bottles) |> max(na.rm = TRUE)` items per dumpster
+- Homes Powered, with a mean of `r combined_wheel |> pull(homes_powered) |> mean(na.rm = TRUE)` per dumpster.
 
 In addition, Professor Trash Wheel records a total of `r prof_wheel |> pull(weight_tons) |> sum(na.rm = TRUE)` tons of trash during its operational period. 
 
@@ -227,33 +230,29 @@ In June 2022, Gwynnda Trash Wheel records a total number of `r gwyn_wheel |> fil
 
 ## Problem 3
 
-### `zip`
+### `zip_df`
 
 Firstly, import and clean the `Zip Codes` dataset.
 
 ```{r}
-zip = 
+zip_df = 
   read_csv(file = "./data/Zip Codes.csv", na = c("NA",".","")) |> 
   janitor::clean_names() |> 
-# file_date is the same for every observations, so it is redundant
-  select(-file_date) |> 
+  select(-file_date, -state_fips) |> # file_date and state.fip are the same for every observations, which are redundant
   mutate(
-    county_code = as.integer(county_code),
-    state_fips = as.integer(state_fips),
-    county_fips = as.integer(county_fips),
-    zip_code = as.integer(zip_code)
+    county_fips = as.character(county_fips),
+    zip_code = as.character(zip_code)
   ) |> 
   rename(county_zip = county) # rename to differentiate bewteen both datasets
-
   
 ```
 
-### `zillow`
+### `zillow_df`
 
 Secondly, import and clean the `Zillow Rental Price` dataset.
 
 ```{r}
-zillow = 
+zillow_df = 
   read_csv(file = "./data/Zillow Rental Price.csv", na = c("NA",".","")) |> 
   janitor::clean_names() |> 
   select(-region_type, -state, -state_name, -city, -metro) |> # state, state_name, region_type, metro, and city are redundant as they have the same value for every observations
@@ -271,13 +270,13 @@ zillow =
   ) |> 
   relocate(year, month, day) |> 
   mutate(
-    region_id_zillow = as.integer(region_id_zillow),
     size_rank = as.integer(size_rank),
-    zip_code = as.integer(zip_code),
+    region_id_zillow = as.character(region_id_zillow),
+    zip_code = as.character(zip_code),
     year = as.integer(year),
     month = as.integer(month),
     day = as.integer(day),
-    county_zillow = str_remove_all(county_zillow, " County") # remove the character "county" for all observations in the column "county"
+    county_zillow = str_remove_all(county_zillow, " County") # remove the character "county" for all observations in the column "county_zillow"
   ) |> 
   filter(!is.na(zori))  # zori is the main variable of interest, hence any row without a value can’t contribute to the analysis
 ```
@@ -287,44 +286,43 @@ zillow =
 Then merge two datasets using `left_join` function by `zip_code`, and I will relocate and arrange it later.
 
 ```{r}
-combined_zillow = left_join(zillow, zip, by = "zip_code")
+combined_zillow = left_join(zillow_df, zip_df, by = "zip_code")
 ```
 
 **Note**: The warning results from the fact that certain ZIP codes appear more than once, which lead to the warning where some `x` (Row 2759) matches multiple rows in `y`. Let's check it. 
 
 ```{r}
 
-zip |> count(zip_code) |> filter(n>1) |> pull(zip_code)
-zip |> filter(zip_code == "10463")
-zip |> filter( zip_code == "11201")
+zip_df |> count(zip_code) |> filter(n>1) |> pull(zip_code)
+zip_df |> filter(zip_code == "10463")
+zip_df |> filter( zip_code == "11201")
 
 ```
 
 This is probably due to the fact that 11201 is mostly in Kings County (Brooklyn), but part of it overlaps into New York County (Manhattan). After double checking, I decide to remove the rows where 11201 corresponds to Manhattan and 10463 corresponds to Manhattan.
 
 ```{r}
-zip = zip |> 
+zip_df = zip_df |> 
   filter(!(zip_code %in% c("10463", "11201") & county_zip == "New York"))
-combined_zillow = left_join(zillow, zip, by = "zip_code")
+combined_zillow = left_join(zillow_df, zip_df, by = "zip_code")
 ```
 
-In addition, there is also some mismatches between `county_zillow` and `county_zip`. After double checking, I decide to change the corresponding `county_zip` into same values as `county_zillow`.
+In addition, there are some mismatches between `county_zillow` and `county_zip`. After double checking, I decide to change the corresponding `county_zip` into same values as `county_zillow`.
 
 ```{r}
-which(pull(combined_zillow, county_zillow) != pull(combined_zillow, county_zip))
+combined_zillow[which(pull(combined_zillow, county_zillow) != pull(combined_zillow, county_zip)), ]
 ```
 
-
-Merge again, relocate, and arrange to get new `combined_zillow` whose number of rows (`r nrow(combined_zillow)`) equals to that of `zillow` datasets (`r nrow(zillow)`).
+Merge again, relocate, and arrange to get new `combined_zillow` whose number of rows (`r nrow(combined_zillow)`) equals to that of `zillow` datasets (`r nrow(zillow_df)`).
 
 ```{r}
-combined_zillow = left_join(zillow, zip, by = "zip_code") |> 
+combined_zillow = left_join(zillow_df, zip_df, by = "zip_code") |> 
   mutate(county_zip = ifelse(county_zip != county_zillow, county_zillow, county_zip)) |> 
   relocate(
     zip_code, county_zillow, neighborhood, # identification variables first
     year, month, day, # temporal variables
     zori, # measurement variables
-    region_id_zillow, size_rank, county_zip, state_fips, county_code, county_fips # Others
+    region_id_zillow, size_rank, county_zip, county_code, county_fips # Others
   ) |> 
   arrange(zip_code, year, month, day)
 ```
@@ -342,10 +340,10 @@ The dataset combines rental price data from Zillow with geographic information, 
 ### Missing Zip codes
 
 ```{r}
-missing_zips = anti_join(zip, zillow, by = "zip_code")
+missing_zips = anti_join(zip_df, zillow_df, by = "zip_code")
 ```
 
-Here are the those ZIP codes only appear in `zip` dataset but not in `zillow` dataset: `r missing_zips |> pull(zip_code)`.
+Here are the those ZIP codes only appear in `zip_df` dataset but not in `zillow_df` dataset: `r missing_zips |> pull(zip_code)`.
 
 Here are some possible reasons why these ZIP codes are missing these areas:
 
