@@ -300,7 +300,7 @@ zip |> filter( zip_code == "11201")
 
 ```
 
-This is probably due to the fact that 11201 is mostly in Kings County (Brooklyn), but part of it overlaps into New York County (Manhattan). So after double checking, I decide to remove the rows where 11201 corresponds to Manhattan and 10463 corresponds to Manhattan.
+This is probably due to the fact that 11201 is mostly in Kings County (Brooklyn), but part of it overlaps into New York County (Manhattan). After double checking, I decide to remove the rows where 11201 corresponds to Manhattan and 10463 corresponds to Manhattan.
 
 ```{r}
 zip = zip |> 
