@@ -324,6 +324,13 @@ combined_zillow = left_join(zillow_df, zip_df, by = "zip_code") |>
     zori, # measurement variables
     region_id_zillow, size_rank, county_zip, county_code, county_fips # Others
   ) |> 
+  rename(borough = county_zillow) |> 
+  mutate(borough = factor(recode(borough,
+                          "New York" = "Manhattan",
+                          "Kings" = "Brooklyn",
+                          "Queens" = "Queens",
+                          "Bronx" = "Bronx",
+                          "Richmond" = "Staten Island"), levels = c("Manhattan", "Brooklyn", "Queens", "Staten Island", "Bronx"))) |> 
   arrange(zip_code, year, month, day)
 ```
 
@@ -357,7 +364,7 @@ Here are some possible reasons why these ZIP codes are missing these areas:
 # Compare January 2020 vs January 2021 prices
 covid_zillow = combined_zillow |>
   filter(month == 1 & year %in% c(2020, 2021)) |>
-  select(zip_code, county_zillow, neighborhood, year, zori) |>
+  select(zip_code, borough, neighborhood, year, zori) |>
   pivot_wider(
     names_from = year,
     values_from = zori,
@@ -372,7 +379,7 @@ covid_zillow = combined_zillow |>
 
 # Top 10 largest drops
 top_drops <- head(covid_zillow, 10)
-top_drops
+knitr::kable(top_drops)
 ```
 
 The data shows significant rental price declines during the first year of the COVID-19 pandemic. The top 10 ZIP codes with the largest drops experienced decreases ranging from approximately `r top_drops |> pull(percent_change) |> min() |> round(1)`% to `r top_drops |> pull(percent_change) |> max() |> round(1)`%.
