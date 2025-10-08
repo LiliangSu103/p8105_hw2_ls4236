@@ -1,0 +1,228 @@
+---
+title: "Homework 2 solutions"
+author: "Jeff Goldsmith"
+date: '`r format(Sys.time(), "%Y-%m-%d")`'
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, message = FALSE)
+```
+
+### Due date
+
+Due: October 1 at 11:59pm. 
+
+### Points
+
+| Problem         | Points    |
+|:--------------- |:--------- |
+| Problem 0       | 20        |
+| Problem 1       | --        |
+| Problem 2       | 40        |
+| Problem 3       | 40        |
+| Optional survey | No points |
+
+
+### Problem 0
+
+This solution focuses on a reproducible report containing code and text necessary for Problems 1-3, and is organized as an R Project. This was not prepared as a GitHub repo; examples for repository structure and git commits should be familiar from other elements of the course.
+
+Throughout, we use appropriate text to describe our code and results, and use clear styling to ensure code is readable. 
+
+```{r load_libraries}
+library(tidyverse)
+library(readxl)
+```
+
+
+### Problem 1
+
+We clean the 538 `pols` data, which provides information on the number of national politicians who are democratic or republican at any given time. There are some values for which `prez_gop` is `2` -- these are months in which Ford became President following Nixon's resignation. In the new `president` variable created as part of our data cleaning, we code these as `gop` (same as values when `prez_gop` is `1`).
+
+```{r clean_538_pols}
+month_df = 
+  tibble(
+    month_num = 1:12,
+    month_abb = month.abb,
+    month = month.name
+  )
+
+pols = 
+  read_csv("./data/fivethirtyeight_datasets/pols-month.csv") |>
+  separate(mon, into = c("year", "month_num", "day"), convert = TRUE) |>
+  mutate(
+    president = recode(prez_gop, "0" = "dem", "1" = "gop", "2" = "gop")) |>
+  left_join(x = _, y = month_df) |> 
+  select(year, month, everything(), -day, -starts_with("prez")) 
+```
+
+We also clean the 538 `snp` data, which contains information related to Standard & Poor’s stock market index.
+
+```{r clean_538_snp}
+snp = 
+  read_csv(
+    "./data/fivethirtyeight_datasets/snp.csv",
+    col_types = cols(date = col_date(format = "%m/%d/%y"))) |>
+  separate(date, into = c("year", "month_num", "day"), convert = TRUE) |>
+  mutate(
+    year = if_else(year > 2023, year - 100, year)) |> 
+  left_join(x = _, y = month_df) |> 
+  select(year, month, close) 
+```
+
+Finally, we tidy the `unemployment` data so that it can be merged with the `pols` and `snp` datasets.
+
+```{r clean_538_unemp}
+unemployment = 
+  read_csv("./data/fivethirtyeight_datasets/unemployment.csv") |>
+  rename(year = Year) |>
+  pivot_longer(
+    Jan:Dec, 
+    names_to = "month_abb",
+    values_to = "unemployment"
+  ) |> 
+  left_join(x = _, y = month_df) |> 
+  select(year, month, unemployment)
+```
+
+Now we merge the three datasets!
+
+```{r merge_538}
+data_538 = 
+  left_join(pols, snp) |>
+  left_join(x = _, y = unemployment)
+
+str(data_538)
+```
+
+Notice that there are some `NA` values in the `close` and `unemployment` variables, which indicate that the value of these variables is missing at those locations.
+
+Let's talk about the 538 datasets. The `pols` data has `r nrow(pols)` observations and `r ncol(pols)` variables and tells us about the party affiliation distribution (democrat or republican) for governors and senators for a given year from years `r pols |> pull(year) |> min()` to `r pols |> pull(year) |> max()`. It also tells us whether the sitting president was a democrat or republican. The `snp` data has `r nrow(snp)` observations and `r ncol(snp)` variables, ranging from years `r snp |> pull(year) |> min()` to `r snp |> pull(year) |> max()`. The `unemployment` data has `r nrow(unemployment)` observations and `r ncol(unemployment)` variables ranging from years `r unemployment |> pull(year) |> min()` to `r unemployment |> pull(year) |> max()`. In Januarys in or after 1975 in which a democrat was president, the **average unemployment rate was `r filter(data_538, month == "January", year >= 1975, president == "dem") |> pull(unemployment) |> mean() |> round(2)`**.  The average unemployment rate over the same time period in which a republican was president was `r filter(data_538, month == "January", year >= 1975, president == "gop") |> pull(unemployment) |> mean() |> round(2)`.
+
+
+
+### Problem 2
+
+First we clean the Mr. Trash Wheel dataset and round the number of sports balls to the nearest integer. Because the data import process parses the `year` variable as a character, we convert this to numeric. Lastly, note that the `homes_powered` variable is incorrectly specified in the original dataset, so we re-compute this according to the "Homes powered note".
+
+```{r clean_trash}
+mr_trash_wheel = 
+  read_excel(
+    "data/202509 Trash Wheel Collection Data.xlsx",
+    sheet = "Mr. Trash Wheel", range = cell_cols("A:N")) |>
+  janitor::clean_names() |>
+  drop_na(dumpster) |>
+  mutate(
+    wheel = "Mr",
+    sports_balls = round(sports_balls),
+    year = as.numeric(year), 
+    homes_powered = weight_tons * 500 / 30
+    )
+```
+
+Next, we use a similar process to import the Professor Trash Wheel data. 
+
+```{r clean_prof}
+prof_trash_wheel = 
+  read_excel(
+    "data/202509 Trash Wheel Collection Data.xlsx",
+    sheet = "Professor Trash Wheel", range = cell_cols("A:M")) |>
+  janitor::clean_names() |>
+  drop_na(dumpster) |>
+  mutate(
+    wheel = "Prof")
+```
+
+Lastly, we import the Gwynnda Trash Wheel data. 
+
+```{r clean_gwynnda}
+gwynnda_trash_wheel = 
+  read_excel(
+    "data/202509 Trash Wheel Collection Data.xlsx",
+    sheet = "Gwynns Falls Trash Wheel", range = cell_cols("A:L")) |>
+  janitor::clean_names() |>
+  drop_na(dumpster) |>
+  mutate(
+    wheel = "Gwynnda")
+```
+
+The next code chunk combines these dataframes. 
+
+```{r}
+combined_trashwheel_df = 
+	bind_rows(mr_trash_wheel, prof_trash_wheel, gwynnda_trash_wheel)
+```
+
+So what's going on in this dataset? It dataset has `r nrow(combined_trashwheel_df)` observations and `r ncol(combined_trashwheel_df)` variables. Other than `month` and `date`, all variables are `numeric`. These contain the overall weight of trash collected by each dumpster, as well as details about the composition of this trash (e.g. plastic, glass, and other trash components). Dumpsters are collected when they are filled, and the year, month, and date of collection is available as well. An approximate calculation for the number of homes powered for one day by the trash in the dumpster is included, assuming that each ton of trash generates 500 KW and an average home uses 30 KW of energy for a day.
+
+Across all available data, the total weight (in tons) of trash collected by Professor Trash Wheel was `r combined_trashwheel_df |> filter(wheel == "Prof") |> pull(weight_tons) |> sum()`. In June 2022, the total number of cigarette butts collected by Gwynnda was `r combined_trashwheel_df |> filter(wheel == "Gwynnda", year == 2022, month == "June") |> pull(cigarette_butts) |> sum()`. 
+
+
+### Problem 3
+
+The code chunk below imports and cleans the NYC rental data and the ZIP code data. The rental data is converted to long format; we also create a year variable. The ZIP code data is imported from the web, and we convert County Names to more familiar Borough names. Some Zip codes appear twice, and we remove the incorrect entry for both. We then join the two datasets using Zip code. 
+
+```{r}
+nyc_zillow_df = 
+  read_csv("data/zillow_data/Zip_zori_uc_sfrcondomfr_sm_month_NYC.csv") |> 
+  pivot_longer(
+    -(RegionID:CountyName),
+    names_to = "month",
+    values_to = "price") |> 
+  janitor::clean_names() |> 
+  rename(zip_code = region_name) |> 
+  mutate(
+    month = as_date(month),
+    year = floor_date(month, unit = "year"),
+    zip_code = as.numeric(zip_code)) |> 
+  select(-county_name)
+
+zip_codes_df = 
+  read_csv("data/zillow_data/Zip Codes.csv") |> 
+  janitor::clean_names() |> 
+  filter(
+    !(zip_code == 10463 & county == "New York"),
+    !(zip_code == 11201 & county == "New York"))  |> 
+  mutate(
+    borough = case_match(
+      county,
+      "Bronx" ~ "Bronx",
+      "Kings" ~ "Brooklyn",
+      "New York" ~ "Manhattan",
+      "Queens" ~ "Queens",
+      "Richmond" ~ "Staten Island"
+    )
+  ) |> 
+  select(zip_code, borough, neighborhood)
+
+nyc_price_df = 
+  left_join(nyc_zillow_df, zip_codes_df, by = "zip_code")
+```
+
+The resulting dataset has `r nrow(nyc_price_df)` rows, `r nyc_price_df |> select(zip_code) |> unique() |> nrow()` zip codes, and `r nyc_price_df |> select(neighborhood) |> drop_na() |> unique() |> nrow()` neighborhoods. 
+
+
+We use `anti_join()` to identify the zip codes that are in the ZIP code dataset but not in the Rental dataset. These may reflect expensive or non-residential Zip codes. For example, ZIP code 10020 is in Chelsea / Clinton and is very expensive, while ZIP code 10041 seems to be a non-residential building.
+
+```{r}
+anti_join(zip_codes_df, nyc_zillow_df, by = "zip_code")
+```
+
+The table below shows the neighborhoods with the largest price decrease between January 2020 and January 2021. All of these are in Manhattan, and most are in recognizable, expensive neighborhoods. This likely resulted when many residents of those neighborhoods left expensive apartments in densely crowded locations for alternatives during the midst of the pandemic. 
+
+```{r}
+nyc_price_df |> 
+  filter(month %in% c("2020-01-31", "2021-01-31")) |> 
+  select(-year) |> 
+  pivot_wider(
+    names_from = month, 
+    values_from = price,
+    names_prefix = "price_"
+  ) |> 
+  mutate(price_change = `price_2021-01-31` - `price_2020-01-31`) |> 
+  filter(min_rank(price_change) < 11) |> 
+  arrange(price_change) |> 
+  select(borough, neighborhood, zip_code, price_change) |> 
+  knitr::kable()
+```
